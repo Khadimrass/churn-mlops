@@ -1,0 +1,77 @@
+# Stack complète : MLflow (tracking + registry) · API · Prometheus · Grafana
+#
+#   docker compose up -d --build                     # démarre la stack
+#   docker compose --profile train run --rm trainer  # (ré)entraîne via le serveur MLflow
+#
+# MLflow  → http://localhost:5000
+# API     → http://localhost:8000/docs
+# Prom.   → http://localhost:9090
+# Grafana → http://localhost:3000  (admin / admin)
+
+services:
+  mlflow:
+    build: { context: ., dockerfile: docker/Dockerfile, target: train }
+    image: churn-mlops-train:latest
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts --serve-artifacts
+      --allowed-hosts "mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000"
+    ports: ["5000:5000"]
+    volumes: [mlflow-data:/mlflow]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/health"]
+      interval: 10s
+      retries: 10
+
+  trainer:
+    image: churn-mlops-train:latest
+    profiles: [train]
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    volumes:
+      - ./data/raw:/app/data/raw
+      - ./models:/app/models
+    depends_on:
+      mlflow: { condition: service_healthy }
+
+  api:
+    build: { context: ., dockerfile: docker/Dockerfile, target: serve }
+    image: churn-mlops-api:latest
+    environment:
+      MODEL_SOURCE: ${MODEL_SOURCE:-local}     # « mlflow » pour lire le registry
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      DRIFT_CHECK_INTERVAL_SECONDS: "60"
+    ports: ["8000:8000"]
+    volumes:
+      - ./models:/app/models:ro               # rechargement à chaud via POST /model/reload
+      - prod-data:/app/data/production
+    depends_on:
+      mlflow: { condition: service_healthy }
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+    ports: ["9090:9090"]
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    depends_on: [api]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports: ["3000:3000"]
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus]
+
+volumes:
+  mlflow-data:
+  prod-data:

@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Données et artefacts générés (reproductibles avec `make train`)
+data/raw/*.csv
+data/production/
+models/*
+!models/.gitkeep
+reports/
+mlruns/
+mlartifacts/
+mlflow.db

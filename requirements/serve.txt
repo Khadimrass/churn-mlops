@@ -1,0 +1,16 @@
+# Dépendances minimales de l'API (image Docker légère)
+fastapi==0.164.0
+uvicorn[standard]==0.54.0
+pydantic==2.13.5
+prometheus-client==0.26.0
+scikit-learn==1.9.1
+lightgbm==4.7.0
+pandas==3.0.5
+numpy==2.5.3
+scipy==1.18.1
+pyarrow==26.0.1
+joblib==1.6.0
+PyYAML==6.0.3
+# Chargement depuis le Model Registry (MODEL_SOURCE=mlflow) sans le serveur MLflow complet
+mlflow-skinny==3.18.0
+skops==0.16.0

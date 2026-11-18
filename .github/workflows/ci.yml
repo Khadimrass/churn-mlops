@@ -1,0 +1,118 @@
+name: CI/CD — Churn MLOps
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:          # lancement manuel (ex. réentraînement après une alerte de dérive)
+  schedule:
+    - cron: "0 4 * * 1"       # réentraînement hebdomadaire, lundi 04:00 UTC
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  MLFLOW_DISABLE_AGENT_HINT: "1"
+
+jobs:
+  quality:
+    name: Lint & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - run: pip install -r requirements/dev.txt
+      - name: Ruff (lint)
+        run: ruff check src tests scripts
+      - name: Pytest + couverture
+        run: pytest --cov=churn --cov-report=term-missing --cov-fail-under=80
+
+  train:
+    name: Entraînement + quality gate
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements/*.txt
+      - run: pip install -r requirements/train.txt
+      - name: Télécharger les données
+        run: python scripts/download_data.py
+      - name: Entraîner (échoue si le quality gate n'est pas atteint)
+        run: python -m churn.train
+      - name: Résumé des métriques
+        if: always()
+        run: |
+          python - <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+          import json, pathlib
+          p = pathlib.Path("models/metrics.json")
+          if p.exists():
+              d = json.loads(p.read_text())
+              m = d["test_metrics"]
+              print(f"### Modèle : `{d['best_model']}` — seuil {d['threshold']}")
+              print("| ROC-AUC | PR-AUC | F1 | Precision | Recall |\n|---|---|---|---|---|")
+              print(f"| {m['roc_auc']:.3f} | {m['pr_auc']:.3f} | {m['f1']:.3f} "
+                    f"| {m['precision']:.3f} | {m['recall']:.3f} |")
+              print(f"\nQuality gate : **{'✅ OK' if d['quality_gate']['passed'] else '❌ échec'}**")
+          EOF
+      - uses: actions/upload-artifact@v4
+        with:
+          name: model
+          path: models/
+          retention-days: 30
+
+  docker:
+    name: Build, smoke test & push de l'image
+    needs: train
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: model
+          path: models/
+      - uses: docker/setup-buildx-action@v3
+      - name: Build de l'image API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: serve
+          load: true
+          tags: churn-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test du conteneur
+        run: |
+          docker run -d --name api -p 8000:8000 churn-api:ci
+          for i in $(seq 1 30); do curl -fsS localhost:8000/health && break; sleep 2; done
+          curl -fsS -X POST localhost:8000/predict -H 'Content-Type: application/json' \
+            -d @tests/fixtures/customer.json | tee /tmp/pred.json
+          python3 -c "import json; p=json.load(open('/tmp/pred.json')); assert 0 <= p['churn_probability'] <= 1"
+          docker logs api
+      - name: Connexion à GHCR
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push vers GHCR
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/churn-api
+          VERSION=$(python3 -c "import json; print(json.load(open('models/metrics.json'))['model_version'])")
+          for TAG in latest sha-${GITHUB_SHA::7} model-v${VERSION}; do
+            docker tag churn-api:ci $IMAGE:$TAG && docker push $IMAGE:$TAG
+          done
