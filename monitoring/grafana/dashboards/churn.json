@@ -1,6 +1,6 @@
 {
   "uid": "churn-mlops",
-  "title": "Churn MLOps — Production",
+  "title": "Churn MLOps Production",
   "schemaVersion": 39,
   "version": 1,
   "refresh": "10s",
@@ -25,7 +25,7 @@
         {
           "refId": "A",
           "expr": "churn_model_info",
-          "legendFormat": "v{{version}} · {{name}}",
+          "legendFormat": "v{{version}} {{name}}",
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"

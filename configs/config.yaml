@@ -1,4 +1,4 @@
-# Configuration centrale du projet — tous les scripts lisent ce fichier.
+# Configuration centrale du projet. Tous les scripts lisent ce fichier.
 project_name: churn-mlops
 
 data:

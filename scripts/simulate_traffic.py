@@ -60,7 +60,7 @@ def main() -> None:
             r.raise_for_status()
             n_high += r.json()["n_high_risk"]
     mode = "AVEC dérive" if args.drift else "normal"
-    print(f"{len(records)} clients envoyés (trafic {mode}) — {n_high} à haut risque")
+    print(f"{len(records)} clients envoyés (trafic {mode}), dont {n_high} à haut risque")
 
 
 if __name__ == "__main__":

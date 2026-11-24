@@ -1,4 +1,4 @@
-name: CI/CD — Churn MLOps
+name: CI/CD Churn MLOps
 
 on:
   push:
@@ -57,11 +57,11 @@ jobs:
           if p.exists():
               d = json.loads(p.read_text())
               m = d["test_metrics"]
-              print(f"### Modèle : `{d['best_model']}` — seuil {d['threshold']}")
+              print(f"### Modèle : `{d['best_model']}`, seuil {d['threshold']}")
               print("| ROC-AUC | PR-AUC | F1 | Precision | Recall |\n|---|---|---|---|---|")
               print(f"| {m['roc_auc']:.3f} | {m['pr_auc']:.3f} | {m['f1']:.3f} "
                     f"| {m['precision']:.3f} | {m['recall']:.3f} |")
-              print(f"\nQuality gate : **{'✅ OK' if d['quality_gate']['passed'] else '❌ échec'}**")
+              print(f"\nQuality gate : **{'OK' if d['quality_gate']['passed'] else 'échec'}**")
           EOF
       - uses: actions/upload-artifact@v4
         with:

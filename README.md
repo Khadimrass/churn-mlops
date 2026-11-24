@@ -1,4 +1,4 @@
-# Churn MLOps — End-to-end ML platform for customer churn prediction
+# Churn MLOps: end-to-end ML platform for customer churn prediction
 
 ![CI](https://github.com/Khadimrass/churn-mlops/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
@@ -6,15 +6,13 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-serving-009688)
 ![Docker](https://img.shields.io/badge/Docker-compose-2496ED)
 
-A production-style MLOps project: a churn model is **trained, tracked, validated, versioned,
-served, monitored and retrained automatically**. It covers the whole lifecycle, not only training
+A production-style MLOps project: a churn model is trained, tracked, validated, versioned,
+served, monitored and retrained automatically. It covers the whole lifecycle, not only training
 the model.
 
 **Use case:** a telecom operator wants to know which customers are about to cancel their
 subscription so the retention team can contact them first.
 Dataset: [IBM Telco Customer Churn](https://github.com/IBM/telco-customer-churn-on-icp4d) (7,043 customers, 26.5 % churn).
-
----
 
 ## Architecture
 
@@ -23,16 +21,16 @@ flowchart LR
     subgraph Training["Training pipeline (CI / on demand)"]
         D[(Raw data)] --> V[Data validation<br/>schema + ranges]
         V --> F[Feature engineering<br/>sklearn Pipeline]
-        F --> C[3 candidate models<br/>LogReg · RF · LightGBM]
+        F --> C[3 candidate models<br/>LogReg, RF, LightGBM]
         C --> S[Model selection<br/>+ threshold tuning]
-        S --> G{Quality gate<br/>ROC-AUC · F1 · Recall}
+        S --> G{Quality gate<br/>ROC-AUC, F1, Recall}
     end
     G -- pass --> R[(MLflow Model Registry<br/>alias: champion)]
     G -- fail --> X[Pipeline fails<br/>no deployment]
     R --> A[FastAPI service<br/>Docker]
     A --> L[(Prediction log)]
     A --> P[Prometheus] --> GR[Grafana dashboard<br/>+ alerts]
-    L --> DR[Drift monitor<br/>PSI · KS · chi²]
+    L --> DR[Drift monitor<br/>PSI, KS, chi²]
     DR -- drift --> T[Retraining<br/>workflow_dispatch]
     T --> Training
 ```
@@ -65,7 +63,7 @@ flowchart LR
 |---|---|---|---|---|---|
 | 0.846 | 0.655 | 0.625 | 0.583 | 0.674 | 0.64 |
 
-The model catches **2 out of 3 churners**. Logistic regression wins over the tree ensembles,
+The model catches 2 out of 3 churners. Logistic regression wins over the tree ensembles,
 which is common on small, mostly categorical tabular data. It is also the easiest model to
 explain to a business team.
 
@@ -80,21 +78,21 @@ make install
 make train
 
 # 3. Serve
-make serve                      # → http://localhost:8000/docs
+make serve                      # then open http://localhost:8000/docs
 
 # 4. In another terminal: send traffic, then simulate a drift
 make simulate
 make simulate-drift
-make drift                      # → reports/drift_report.html
+make drift                      # writes reports/drift_report.html
 
 # 5. Explore experiments
-make mlflow-ui                  # → http://localhost:5000
+make mlflow-ui                  # then open http://localhost:5000
 ```
 
 ### Full stack with Docker
 
 ```bash
-make docker-up        # trains locally, then starts MLflow · API · Prometheus · Grafana
+make docker-up        # trains locally, then starts MLflow, API, Prometheus and Grafana
 make simulate         # generate traffic
 make docker-train     # retrain inside Docker against the MLflow server + hot reload the API
 ```
@@ -104,7 +102,7 @@ make docker-train     # retrain inside Docker against the MLflow server + hot re
 | API docs | http://localhost:8000/docs |
 | MLflow | http://localhost:5000 |
 | Prometheus | http://localhost:9090 |
-| Grafana (admin/admin) | http://localhost:3000 → dashboard *Churn MLOps — Production* |
+| Grafana (admin/admin) | http://localhost:3000 (dashboard *Churn MLOps Production*) |
 
 Set `MODEL_SOURCE=mlflow` to make the API load `models:/churn-classifier@champion` from the
 registry instead of the model file baked into the image.
@@ -127,53 +125,53 @@ curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
 | GET | `/model/info` | Served model, version, threshold, test metrics |
 | POST | `/model/reload` | Hot-reload the champion model |
 | GET | `/monitoring/drift` | Drift on the last N predictions |
-| GET | `/health` · `/metrics` | Health check · Prometheus metrics |
+| GET | `/health` | Health check |
+| GET | `/metrics` | Prometheus metrics |
 
 ## Drift monitoring
 
 `scripts/simulate_traffic.py --drift` simulates a realistic shift: a 35 % price increase and a
 wave of new month-to-month customers. The monitor flags `tenure`, `MonthlyCharges`,
-`TotalCharges`, `Contract`, `PaymentMethod` **and** a shift in the prediction distribution, and
+`TotalCharges`, `Contract`, `PaymentMethod` and a shift in the prediction distribution, and
 it recommends retraining.
 
 | PSI | Interpretation |
 |---|---|
 | < 0.10 | stable |
-| 0.10 – 0.20 | to watch |
+| 0.10 to 0.20 | to watch |
 | > 0.20 | significant drift |
 
-A feature counts as drifted when its PSI is above the threshold **and** its statistical test is
+A feature counts as drifted when its PSI is above the threshold and its statistical test is
 significant, which avoids false alarms on large samples. Retraining is recommended when more
 than 30 % of the features drift or when the predictions drift.
 
 ## Project structure
 
-```
-├── configs/config.yaml          # single source of truth (features, models, thresholds)
-├── src/churn/
-│   ├── data.py                  # ingestion, cleaning, stratified split
-│   ├── validation.py            # data contract
-│   ├── features.py              # feature engineering + sklearn pipelines
-│   ├── evaluate.py              # metrics, threshold tuning, quality gate
-│   ├── train.py                 # training pipeline + MLflow + registry
-│   ├── api/                     # FastAPI app, schemas, model store, Prometheus metrics
-│   └── monitoring/drift.py      # PSI / KS / chi² drift detection + HTML report
-├── scripts/                     # data download, traffic simulator
-├── tests/                       # 26 unit + integration tests (synthetic data, 89 % coverage)
-├── docker/Dockerfile            # multi-stage: serve / train
-├── docker-compose.yml           # MLflow · API · Prometheus · Grafana
-├── monitoring/                  # Prometheus config + alert rules, Grafana dashboard
-└── .github/workflows/ci.yml     # lint → test → train + gate → build → smoke test → push
-```
+| Path | Content |
+|---|---|
+| `configs/config.yaml` | single source of truth (features, models, thresholds) |
+| `src/churn/data.py` | ingestion, cleaning, stratified split |
+| `src/churn/validation.py` | data contract |
+| `src/churn/features.py` | feature engineering and sklearn pipelines |
+| `src/churn/evaluate.py` | metrics, threshold tuning, quality gate |
+| `src/churn/train.py` | training pipeline, MLflow tracking and registry |
+| `src/churn/api/` | FastAPI app, schemas, model store, Prometheus metrics |
+| `src/churn/monitoring/drift.py` | PSI / KS / chi² drift detection and HTML report |
+| `scripts/` | data download, traffic simulator |
+| `tests/` | 26 unit and integration tests (synthetic data, 89 % coverage) |
+| `docker/Dockerfile` | multi-stage build: serve and train images |
+| `docker-compose.yml` | MLflow, API, Prometheus, Grafana |
+| `monitoring/` | Prometheus config, alert rules, Grafana dashboard |
+| `.github/workflows/ci.yml` | lint, test, train with gate, build, smoke test, push |
 
 ## Tech stack
 
-Python 3.12 · scikit-learn · LightGBM · pandas · MLflow (tracking + registry) · FastAPI ·
-Pydantic · Prometheus · Grafana · Docker · docker-compose · GitHub Actions · pytest · Ruff
+Python 3.12, scikit-learn, LightGBM, pandas, MLflow (tracking and registry), FastAPI,
+Pydantic, Prometheus, Grafana, Docker, docker-compose, GitHub Actions, pytest, Ruff
 
 ## Possible next steps
 
 - Kubernetes deployment (Helm chart) with canary releases between champion and challenger
 - Feature store (Feast) and data versioning (DVC)
 - Model explanations per prediction (SHAP) returned by the API
-- Automatic retraining triggered by the drift alert (Alertmanager webhook → `workflow_dispatch`)
+- Automatic retraining triggered by the drift alert (an Alertmanager webhook calling `workflow_dispatch`)

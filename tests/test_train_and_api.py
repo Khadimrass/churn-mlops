@@ -89,7 +89,7 @@ def test_batch_and_prediction_log(client, trained_env):
 def test_drift_endpoint_and_metrics(client):
     r = client.get("/monitoring/drift")
     assert r.status_code == 200
-    # 60 fois le même client → distribution très différente de l'entraînement
+    # 60 fois le même client : distribution très différente de l'entraînement
     assert r.json()["retrain_recommended"] is True
     metrics = client.get("/metrics").text
     assert "churn_predictions_total" in metrics

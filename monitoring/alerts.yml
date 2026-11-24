@@ -31,7 +31,7 @@ groups:
         for: 10m
         labels: { severity: warning }
         annotations:
-          summary: "Dérive : plus de 30 % des features ont changé — envisager un réentraînement"
+          summary: "Dérive : plus de 30 % des features ont changé, envisager un réentraînement"
 
       - alert: ChurnRateShift
         expr: >

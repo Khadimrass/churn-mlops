@@ -1,7 +1,7 @@
 """Chargement du modèle « champion » : depuis le bundle local ou depuis le Model Registry MLflow.
 
-MODEL_SOURCE=local   (défaut) → lit MODEL_PATH (models/model.joblib)
-MODEL_SOURCE=mlflow           → lit models:/<nom>@champion depuis MLFLOW_TRACKING_URI
+MODEL_SOURCE=local   (défaut) : lit MODEL_PATH (models/model.joblib)
+MODEL_SOURCE=mlflow           : lit models:/<nom>@champion depuis MLFLOW_TRACKING_URI
 """
 
 from __future__ import annotations
@@ -36,7 +36,8 @@ class LoadedModel:
 
 
 def _load_local(path: str) -> LoadedModel:
-    bundle = joblib.load(path)  # noqa: S301 — fichier produit par notre propre pipeline
+    # Le fichier est produit par notre propre pipeline, le charger avec joblib est sûr.
+    bundle = joblib.load(path)  # noqa: S301
     return LoadedModel(
         pipeline=bundle["pipeline"],
         threshold=float(bundle["threshold"]),

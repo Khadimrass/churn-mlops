@@ -1,12 +1,12 @@
-# Stack complète : MLflow (tracking + registry) · API · Prometheus · Grafana
+# Stack complète : MLflow (tracking + registry), API, Prometheus, Grafana
 #
 #   docker compose up -d --build                     # démarre la stack
 #   docker compose --profile train run --rm trainer  # (ré)entraîne via le serveur MLflow
 #
-# MLflow  → http://localhost:5000
-# API     → http://localhost:8000/docs
-# Prom.   → http://localhost:9090
-# Grafana → http://localhost:3000  (admin / admin)
+# MLflow  : http://localhost:5000
+# API     : http://localhost:8000/docs
+# Prom.   : http://localhost:9090
+# Grafana : http://localhost:3000  (admin / admin)
 
 services:
   mlflow:

@@ -63,7 +63,7 @@ def _plot_evaluation(y_true, proba, threshold: float, out_dir: Path) -> list[Pat
     fig, ax = plt.subplots(figsize=(5, 4))
     RocCurveDisplay.from_predictions(y_true, proba, ax=ax)
     ax.plot([0, 1], [0, 1], "--", color="grey")
-    ax.set_title("Courbe ROC — jeu de test")
+    ax.set_title("Courbe ROC (jeu de test)")
     paths.append(out_dir / "roc_curve.png")
     fig.tight_layout()
     fig.savefig(paths[-1], dpi=120)
@@ -205,7 +205,7 @@ def run(config_path: str | None = None) -> dict[str, Any]:
 
         _write_json(model_dir / "metrics.json", summary)
         mlflow.log_artifact(str(model_dir / "metrics.json"))
-        logger.info("✅ Quality gate OK — modèle v%s promu « champion » | test ROC-AUC = %.4f "
+        logger.info("Quality gate OK : modèle v%s promu « champion » | test ROC-AUC = %.4f "
                     "| F1 = %.4f | Recall = %.4f", version, test_metrics["roc_auc"],
                     test_metrics["f1"], test_metrics["recall"])
     return summary

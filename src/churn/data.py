@@ -28,7 +28,7 @@ def download_data(cfg: dict[str, Any], force: bool = False) -> Path:
 
 
 def clean(df: pd.DataFrame, cfg: dict[str, Any]) -> pd.DataFrame:
-    """Nettoyage minimal et déterministe — appliqué à l'identique à l'entraînement et en production."""
+    """Nettoyage minimal et déterministe, appliqué à l'identique à l'entraînement et en production."""
     df = df.copy()
     # TotalCharges est stocké en texte avec des espaces pour les clients tout neufs (tenure = 0)
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce")
@@ -70,5 +70,5 @@ def split_dataset(
     X_train, X_val, y_train, y_val = train_test_split(
         X_tmp, y_tmp, test_size=s["val_size"], stratify=y_tmp, random_state=s["random_state"]
     )
-    logger.info("Split — train: %d, val: %d, test: %d", len(X_train), len(X_val), len(X_test))
+    logger.info("Split : train %d, val %d, test %d", len(X_train), len(X_val), len(X_test))
     return X_train, X_val, X_test, y_train, y_val, y_test

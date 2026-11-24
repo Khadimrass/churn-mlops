@@ -4,7 +4,7 @@ On compare la distribution des features vues en production (journal de l'API) à
 du jeu d'entraînement (référence sauvegardée par le pipeline).
 
   - PSI (Population Stability Index) : mesure l'ampleur du changement
-        < 0.10 stable | 0.10–0.20 à surveiller | > 0.20 dérive significative
+        < 0.10 stable | 0.10-0.20 à surveiller | > 0.20 dérive significative
   - Test de Kolmogorov-Smirnov (numériques) / test du chi² (catégorielles) :
         indique si la différence est statistiquement significative
 
@@ -158,17 +158,17 @@ def load_production_log(path: str | Path, last_n: int | None = None) -> pd.DataF
 
 
 def render_html(report: DriftReport) -> str:
-    status = ("🔴 Dérive détectée — réentraînement recommandé" if report.retrain_recommended
-              else "🟢 Pas de dérive significative")
+    status = ("Dérive détectée : réentraînement recommandé" if report.retrain_recommended
+              else "Pas de dérive significative")
     rows = "\n".join(
         f"<tr class='{'bad' if f.drifted else ''}'><td>{f.feature}</td><td>{f.kind}</td>"
         f"<td>{f.psi:.3f}</td><td>{f.test}</td><td>{f.p_value:.2e}</td>"
         f"<td>{f.reference_stat}</td><td>{f.current_stat}</td>"
-        f"<td>{'⚠️ oui' if f.drifted else 'non'}</td></tr>"
+        f"<td>{'oui' if f.drifted else 'non'}</td></tr>"
         for f in report.features
     )
     return f"""<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
-<title>Rapport de dérive — Churn</title><style>
+<title>Rapport de dérive (Churn)</title><style>
 body{{font-family:system-ui,sans-serif;max-width:1100px;margin:2rem auto;padding:0 1rem;color:#1f2933}}
 h1{{margin-bottom:.2rem}} .muted{{color:#616e7c}}
 .cards{{display:flex;gap:1rem;margin:1.5rem 0}}
@@ -179,8 +179,8 @@ th,td{{padding:.5rem;border-bottom:1px solid #e4e7eb;text-align:left}}
 th{{background:#f5f7fa}} tr.bad{{background:#fff1f0}}
 </style></head><body>
 <h1>Rapport de dérive des données</h1>
-<p class="muted">Généré le {report.generated_at} · référence : {report.n_reference} lignes
-(entraînement) · production : {report.n_current} lignes</p>
+<p class="muted">Généré le {report.generated_at}. Référence : {report.n_reference} lignes
+(entraînement), production : {report.n_current} lignes</p>
 <h2>{status}</h2>
 <div class="cards">
  <div class="card"><span class="muted">Features en dérive</span><b>{report.drift_share:.0%}</b></div>
@@ -192,7 +192,7 @@ th{{background:#f5f7fa}} tr.bad{{background:#fff1f0}}
 <th>Référence</th><th>Production</th><th>Dérive</th></tr></thead><tbody>
 {rows}
 </tbody></table>
-<p class="muted">PSI &lt; 0.10 : stable · 0.10–0.20 : à surveiller · &gt; 0.20 : dérive.
+<p class="muted">PSI &lt; 0.10 : stable, de 0.10 à 0.20 : à surveiller, &gt; 0.20 : dérive.
 Une feature est en dérive si PSI &gt; seuil et p-value &lt; seuil.</p>
 </body></html>"""
 
@@ -213,7 +213,7 @@ def run(config_path: str | None = None, last_n: int | None = None) -> DriftRepor
     (out / "drift_report.json").write_text(
         json.dumps(report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8")
     (out / "drift_report.html").write_text(render_html(report), encoding="utf-8")
-    logger.info("Rapport écrit dans %s — drift_share = %.0f%% | réentraînement = %s",
+    logger.info("Rapport écrit dans %s (drift_share = %.0f%%, réentraînement = %s)",
                 out, report.drift_share * 100, report.retrain_recommended)
     return report
 
